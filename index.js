@@ -17,6 +17,25 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+// verify jwt
+function verifyJWT(req, res, next) {
+  console.log("token inside verifyJWT:", req.headers.authorization);
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    res.status(401).send("Unauthorized Access!");
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+    if (err) {
+      res.status(403).send({ message: "forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+}
+
 async function run() {
   try {
     const appointmentOptionCollection = client
@@ -112,8 +131,14 @@ async function run() {
      * app.delete('/bookings/:id')
      */
 
-    app.get("/bookings", async (req, res) => {
+    app.get("/bookings", verifyJWT, async (req, res) => {
       const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+
+      if (email !== decodedEmail) {
+        res.status(403).send({ message: "forbidden access" });
+      }
+
       const query = { email: email };
       const bookings = await bookingsCollection.find(query).toArray();
       res.send(bookings);
@@ -148,8 +173,8 @@ async function run() {
         const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
           expiresIn: "1d",
         });
+        return res.send({ accessToken: token });
       }
-      // console.log(user);
       res.status(403).send({ accessToken: "" });
     });
 
