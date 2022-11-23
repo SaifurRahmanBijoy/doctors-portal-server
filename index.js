@@ -333,3 +333,4 @@ app.listen(port, () => {
 });
 
 // need to export app
+module.exports = app;
