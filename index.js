@@ -235,3 +235,5 @@ app.get("/", async (req, res) => {
 app.listen(port, () => {
   console.log("DOCTOR'S PORTAL IS RUNNING ON PORT:", port);
 });
+
+// need to export app
