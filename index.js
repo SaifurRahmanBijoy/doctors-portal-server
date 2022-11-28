@@ -1,6 +1,10 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
+
+const nodemailer = require("nodemailer");
+const mg = require("nodemailer-mailgun-transport");
+
 const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
@@ -18,6 +22,53 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+
+function sendBookingEmail(booking) {
+  const { email, treatment, appointmentDate, slot } = booking;
+
+  // This is your API key that you retrieve from www.mailgun.com/cp (free up to 10K monthly emails)
+  const auth = {
+    auth: {
+      api_key: process.env.EMAIL_SEND_KEY,
+      domain: process.env.EMAIL_SEND_DOMAIN,
+    },
+  };
+
+  const transporter = nodemailer.createTransport(mg(auth));
+
+  // let transporter = nodemailer.createTransport({
+  //   host: "smtp.sendgrid.net",
+  //   port: 587,
+  //   auth: {
+  //     user: "apikey",
+  //     pass: process.env.SENDGRID_AOI_KEY,
+  //   },
+  // });  
+
+  transporter.sendMail(
+    {
+      from: "saifurrahmanbijoy1@gmail.com", // verified sender email
+      to: email, // recipient email
+      subject: `Your Appointment for ${treatment} is on ${appointmentDate} at ${slot} is confirmed`, // Subject line
+      text: "Hello!", // plain text body
+      html: `
+      <h3>Your Appointment is Confirmed.</h3>
+      <div>
+        <p>Your Appointment for treatment ${treatment}</p>
+        <p>Please visit us on ${appointmentDate}</p>
+        <p>Thanks From Doctor's Portal</p>
+        </div>
+      `, // html body
+    },
+    function (error, info) {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log("Email sent: " + info.response);
+      }
+    }
+  );
+}
 
 // verify jwt
 function verifyJWT(req, res, next) {
@@ -198,6 +249,8 @@ async function run() {
       }
 
       const result = await bookingsCollection.insertOne(booking);
+      // send email about booking/appointment confirmation
+      sendBookingEmail(booking);
       res.send(result);
     });
 
